@@ -41,7 +41,7 @@ AIエージェントのセキュリティ脆弱性を学ぶための教育用デ
 
 ```bash
 pip install -r requirements.txt
-export ANTHROPIC_API_KEY=your_key_here
+export GOOGLE_API_KEY=your_gemini_api_key_here
 python app.py
 ```
 
