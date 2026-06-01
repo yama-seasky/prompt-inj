@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Customer Support Demo — Prompt Injection Lab</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+
+    .edu-banner {
+      background: linear-gradient(135deg, #7c3aed, #db2777);
+      color: white;
+      text-align: center;
+      padding: 10px;
+      font-weight: bold;
+      font-size: 13px;
+      letter-spacing: 1px;
+    }
+
+    .warning-banner {
+      display: none;
+      background: #7f1d1d;
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+      padding: 10px 20px;
+      margin: 12px 20px 0;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    .warning-banner.visible { display: block; }
+
+    header {
+      background: #1a1d2e;
+      padding: 16px 24px;
+      border-bottom: 1px solid #2d3148;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 18px; color: #a78bfa; }
+    header .user-info { font-size: 12px; color: #94a3b8; }
+    header .user-info span { color: #34d399; font-weight: bold; }
+
+    .nav-links { display: flex; gap: 12px; }
+    .nav-links a {
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 13px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid #2d3148;
+      transition: all 0.2s;
+    }
+    .nav-links a:hover { color: #e2e8f0; border-color: #4c4f6d; }
+
+    .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+
+    .controls {
+      background: #1a1d2e;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+      border: 1px solid #2d3148;
+    }
+    .controls label { font-size: 13px; color: #94a3b8; display: block; margin-bottom: 6px; }
+    .controls select {
+      background: #0f1117;
+      color: #e2e8f0;
+      border: 1px solid #4c4f6d;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 14px;
+      width: 100%;
+      cursor: pointer;
+    }
+    .controls select:focus { outline: none; border-color: #7c3aed; }
+
+    .chat-container {
+      background: #1a1d2e;
+      border-radius: 10px;
+      border: 1px solid #2d3148;
+      display: flex;
+      flex-direction: column;
+      height: 420px;
+    }
+    .chat-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #2d3148;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .message {
+      max-width: 80%;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .message.user {
+      background: #2e3a59;
+      align-self: flex-end;
+      border-bottom-right-radius: 2px;
+    }
+    .message.assistant {
+      background: #1e2a3a;
+      border: 1px solid #2d3148;
+      align-self: flex-start;
+      border-bottom-left-radius: 2px;
+    }
+    .message.system {
+      background: #1c2030;
+      border: 1px dashed #4c4f6d;
+      align-self: center;
+      font-size: 12px;
+      color: #64748b;
+      max-width: 90%;
+    }
+    .chat-input-row {
+      padding: 12px;
+      border-top: 1px solid #2d3148;
+      display: flex;
+      gap: 8px;
+    }
+    .chat-input-row input {
+      flex: 1;
+      background: #0f1117;
+      color: #e2e8f0;
+      border: 1px solid #4c4f6d;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 14px;
+    }
+    .chat-input-row input:focus { outline: none; border-color: #7c3aed; }
+    .chat-input-row button {
+      background: #7c3aed;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 18px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    .chat-input-row button:hover { background: #6d28d9; }
+    .chat-input-row button:disabled { background: #4c4f6d; cursor: not-allowed; }
+
+    .tool-calls {
+      margin-top: 16px;
+      background: #1a1d2e;
+      border-radius: 10px;
+      border: 1px solid #2d3148;
+    }
+    .tool-calls-header {
+      padding: 10px 16px;
+      border-bottom: 1px solid #2d3148;
+      font-size: 13px;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tool-calls-body {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .tool-call-item {
+      background: #0f1117;
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 12px;
+      font-family: 'Courier New', monospace;
+      border-left: 3px solid #4c4f6d;
+    }
+    .tool-call-item.read_product_page { border-left-color: #3b82f6; }
+    .tool-call-item.send_email { border-left-color: #ef4444; }
+    .tool-call-name {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .tool-call-item.read_product_page .tool-call-name { color: #60a5fa; }
+    .tool-call-item.send_email .tool-call-name { color: #f87171; }
+    .tool-call-detail { color: #94a3b8; word-break: break-all; }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    .badge.danger { background: #7f1d1d; color: #fca5a5; }
+    .badge.info { background: #1e3a5f; color: #93c5fd; }
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid #4c4f6d;
+      border-top-color: #7c3aed;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty-tool-calls { padding: 12px; font-size: 12px; color: #4c4f6d; font-style: italic; }
+  </style>
+</head>
+<body>
+  <div class="edu-banner">
+    ⚠️ EDUCATIONAL DEMO — Indirect Prompt Injection Attack Simulator — No real emails sent, no real harm possible ⚠️
+  </div>
+
+  <header>
+    <h1>🤖 TechPro AI Customer Support</h1>
+    <div class="user-info">
+      セッションユーザー: <span id="user-email">{{ user_email }}</span>
+    </div>
+    <div class="nav-links">
+      <a href="/logs">📋 ログを見る</a>
+      <a href="/reset">🔄 リセット</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="warning-banner" class="warning-banner">
+      ⚠️ <strong>攻撃モード有効:</strong> このプロダクトページには隠された プロンプトインジェクションペイロードが含まれています。AIエージェントが
+      <code>send_email</code> を attacker@evil.com に対して呼び出すかどうか観察してください。
+    </div>
+
+    <div class="controls" style="margin-top: 16px;">
+      <label for="page-select">📄 プロダクトページを選択 (Select Product Page)</label>
+      <select id="page-select" onchange="onPageChange()">
+        <option value="product_safe">✅ Safe Product Page (通常ページ)</option>
+        <option value="product_injected">☠️ Injected Product Page (攻撃ペイロード入り)</option>
+      </select>
+    </div>
+
+    <div class="chat-container">
+      <div class="chat-header">
+        💬 カスタマーサポートチャット &nbsp;|&nbsp; <span id="page-label" style="color: #34d399;">Safe Page</span>
+      </div>
+      <div class="chat-messages" id="chat-messages">
+        <div class="message system">
+          ようこそ！TechPro X500 についてご質問ください。<br/>
+          Welcome! Ask about the TechPro X500 laptop.
+        </div>
+      </div>
+      <div class="chat-input-row">
+        <input type="text" id="chat-input" placeholder="質問を入力... (e.g. What's the price?)" onkeydown="if(event.key==='Enter')sendMessage()" />
+        <button id="send-btn" onclick="sendMessage()">送信</button>
+      </div>
+    </div>
+
+    <div class="tool-calls" id="tool-calls-panel">
+      <div class="tool-calls-header">
+        🔧 ツール呼び出し履歴 (Tool Calls Made)
+        <span id="tc-spinner" style="display:none;"><span class="spinner"></span></span>
+      </div>
+      <div id="tool-calls-body" class="tool-calls-body">
+        <div class="empty-tool-calls">ツール呼び出しはまだありません。</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allToolCalls = [];
+
+    function onPageChange() {
+      const sel = document.getElementById('page-select').value;
+      const label = document.getElementById('page-label');
+      const warn = document.getElementById('warning-banner');
+      if (sel === 'product_injected') {
+        label.textContent = '☠️ Injected Page (ATTACK ACTIVE)';
+        label.style.color = '#f87171';
+        warn.classList.add('visible');
+      } else {
+        label.textContent = '✅ Safe Page';
+        label.style.color = '#34d399';
+        warn.classList.remove('visible');
+      }
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('chat-input');
+      const msg = input.value.trim();
+      if (!msg) return;
+      input.value = '';
+
+      const pageName = document.getElementById('page-select').value;
+      addMessage('user', msg);
+
+      const btn = document.getElementById('send-btn');
+      const spinner = document.getElementById('tc-spinner');
+      btn.disabled = true;
+      spinner.style.display = 'inline';
+
+      try {
+        const resp = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: msg, page_name: pageName })
+        });
+        const data = await resp.json();
+
+        if (data.error) {
+          addMessage('assistant', '⚠️ Error: ' + data.error);
+        } else {
+          addMessage('assistant', data.response || '(no response)');
+        }
+
+        if (data.tool_calls && data.tool_calls.length > 0) {
+          allToolCalls = allToolCalls.concat(data.tool_calls);
+          renderToolCalls();
+        }
+      } catch (e) {
+        addMessage('assistant', '⚠️ Network error: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        spinner.style.display = 'none';
+      }
+    }
+
+    function addMessage(role, text) {
+      const container = document.getElementById('chat-messages');
+      const div = document.createElement('div');
+      div.className = 'message ' + role;
+      div.textContent = text;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function renderToolCalls() {
+      const body = document.getElementById('tool-calls-body');
+      body.innerHTML = '';
+      allToolCalls.forEach(tc => {
+        const item = document.createElement('div');
+        item.className = 'tool-call-item ' + tc.name;
+        const nameEl = document.createElement('div');
+        nameEl.className = 'tool-call-name';
+        const badge = tc.name === 'send_email'
+          ? '<span class="badge danger">⚠️ ATTACK INDICATOR</span>'
+          : '<span class="badge info">read</span>';
+        nameEl.innerHTML = tc.name + ' ' + badge;
+        item.appendChild(nameEl);
+
+        const detail = document.createElement('div');
+        detail.className = 'tool-call-detail';
+        detail.textContent = JSON.stringify(tc.input, null, 2);
+        item.appendChild(detail);
+        body.appendChild(item);
+      });
+    }
+  </script>
+</body>
+</html>
